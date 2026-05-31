@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ClientWFTask/ClientWFTask.csproj" Id="553e0735-7c64-4f54-aa89-fee15727da58" />
+  <Project Path="DatabaseLibrary/DatabaseLibrary.csproj" />
+  <Project Path="GameCore/GameCore.csproj" />
+  <Project Path="ServerCTask/ServerCTask.csproj" />
+</Solution>
