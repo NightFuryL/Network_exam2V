@@ -1,6 +1,76 @@
 ﻿using DatabaseLibrary.Entities;
 using System.Text.Json;
 namespace GameCore;
+
+using System;
+using System.IO;
+
+public class NetworkPacket
+{
+    public PacketType CommandCode { get; set; }
+    public PacketWhere PacketTo { get; set; }
+    public PacketResult PResult { get; set; } 
+    public byte[] Data { get; set; }
+
+    /// <summary>
+    /// Метод упаковки: превращает весь пакет в один плоский массив байт для отправки в сеть
+    /// </summary>
+    public byte[] Serialize()
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+        writer.Write((byte)CommandCode);
+        writer.Write((byte)PacketTo);
+        writer.Write((byte)PResult);
+
+        // 2. Пишем размер массива Data (чтобы принимающий знал, сколько байт читать)
+        if (Data != null)
+        {
+            writer.Write(Data.Length); // Длина массива (4 байта int)
+            writer.Write(Data);        // Сами байты данных
+        }
+        else
+        {
+            writer.Write(0); // Если данных нет, пишем длину 0
+        }
+
+        return ms.ToArray();
+    }
+
+    /// <summary>
+    /// Статический метод распаковки: собирает объект NetworkPacket из пришедших байт
+    /// </summary>
+    public static NetworkPacket Deserialize(byte[] fullPacketBytes)
+    {
+        using var ms = new MemoryStream(fullPacketBytes);
+        using var reader = new BinaryReader(ms);
+
+        var packet = new NetworkPacket();
+
+        // 1. Читаем заголовки в том же порядке, в каком записывали
+        packet.CommandCode = (PacketType)reader.ReadInt32();
+        packet.PacketTo = (PacketWhere)reader.ReadInt32();
+        packet.PResult = (PacketResult)reader.ReadInt32();
+
+        // 2. Читаем размер данных
+        int dataLength = reader.ReadInt32();
+
+        if (dataLength > 0)
+        {
+            packet.Data = reader.ReadBytes(dataLength);
+        }
+        else
+        {
+            packet.Data = Array.Empty<byte>();
+        }
+
+        return packet;
+    }
+}
+
+
+#region old code
+/*
 public interface INetworkPacket
 {
     PacketType CommandCode { get; }
@@ -66,10 +136,11 @@ public class LeaderBoardManagePacket : INetworkPacket
         PacketTo = Enum.Parse<PacketWhere>(parts[2]);
     }
 }
-/*
 public class FindGamePacket : INetworkPacket
 {
     public PacketType CommandCode => PacketType.FindGame;
+    public PacketWhere PacketTo { get; set; }
+    public PacketResult PResult { get; }
     public string Pack() => CommandCode.ToString();
     public void Unpack(string[] parts) { }
 }
@@ -126,8 +197,8 @@ public class MoveSyncPacket : INetworkPacket
 public class ManageConnectionPacket : INetworkPacket
 {
     public PacketType CommandCode => PacketType.ManageConnectionPacket;
-    public int RoomId { get; set; }
     public ConnectionType ConnectionType { get; set; }
+    public int RoomId { get; set; }
     public string Pack() => $"{CommandCode};;;{RoomId};;;{ConnectionType}";
 
     public void Unpack(string[] parts)
@@ -150,7 +221,6 @@ public class GameStatePacket : INetworkPacket
         Result = Enum.Parse<GameState>(parts[2]);
     }
 }
-*/
 public class RoomsListManagePacket : INetworkPacket
 {
     public PacketType CommandCode => PacketType.RoomsListPacket;
@@ -168,3 +238,5 @@ public class RoomsListManagePacket : INetworkPacket
         PResult = Enum.Parse<PacketResult>(parts[3]);
     }
 }
+*/
+#endregion

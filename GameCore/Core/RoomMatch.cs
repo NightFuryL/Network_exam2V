@@ -6,7 +6,6 @@ public class RoomMatch
     public PlayerUser? White { get; set; }
     public PlayerUser? Black { get; set; }
     public List<Watcher> Watchers { get; } = new();
-    public CurrentGameManager Game { get; } = new();
     public bool Started { get; set; }
 
     public RoomMatch(int id, PlayerUser? white, PlayerUser? black)

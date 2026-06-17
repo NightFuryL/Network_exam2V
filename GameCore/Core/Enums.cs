@@ -11,7 +11,6 @@ public enum PlayerColor
     White,
     Black,
 }
-
 public enum IsKing
 {
     Yes,
@@ -54,7 +53,7 @@ public enum PacketResult
     Success,
     Failed,
 }
-public enum PacketType
+public enum PacketType : byte
 {
     ResultOfDoPacket,
     LoginAndRegister,
@@ -64,7 +63,7 @@ public enum PacketType
     MatchStartedPacket,
     BoardStatePacket,
     MoveSyncPacket,
-    RoomsListPacket,
+    RoomsListForWatchersPacket,
     ManageConnectionPacket,
     GameEndPacket,
 }
