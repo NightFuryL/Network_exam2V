@@ -1,4 +1,4 @@
-﻿namespace ClientWFTask
+namespace ClientWFTask
 {
     partial class MainForm
     {
@@ -34,14 +34,13 @@
             btnLogout = new Button();
             lblNickname = new Label();
             lblRating = new Label();
-            lblGuid = new Label();
             SuspendLayout();
             // 
             // btnPlay
             // 
             btnPlay.Location = new Point(403, 78);
             btnPlay.Name = "btnPlay";
-            btnPlay.Size = new Size(94, 29);
+            btnPlay.Size = new Size(120, 34);
             btnPlay.TabIndex = 0;
             btnPlay.Text = "Play";
             btnPlay.UseVisualStyleBackColor = true;
@@ -51,7 +50,7 @@
             // 
             btnWatch.Location = new Point(296, 141);
             btnWatch.Name = "btnWatch";
-            btnWatch.Size = new Size(94, 29);
+            btnWatch.Size = new Size(120, 34);
             btnWatch.TabIndex = 2;
             btnWatch.Text = "Watch";
             btnWatch.UseVisualStyleBackColor = true;
@@ -61,7 +60,7 @@
             // 
             btnLeaderBoard.Location = new Point(426, 141);
             btnLeaderBoard.Name = "btnLeaderBoard";
-            btnLeaderBoard.Size = new Size(94, 29);
+            btnLeaderBoard.Size = new Size(120, 34);
             btnLeaderBoard.TabIndex = 3;
             btnLeaderBoard.Text = "LeaderBoard";
             btnLeaderBoard.UseVisualStyleBackColor = true;
@@ -71,7 +70,7 @@
             // 
             btnLogout.Location = new Point(353, 211);
             btnLogout.Name = "btnLogout";
-            btnLogout.Size = new Size(94, 29);
+            btnLogout.Size = new Size(120, 34);
             btnLogout.TabIndex = 1;
             btnLogout.Text = " Logout";
             btnLogout.UseVisualStyleBackColor = true;
@@ -95,21 +94,11 @@
             lblRating.TabIndex = 5;
             lblRating.Text = "Rating :";
             // 
-            // lblGuid
-            // 
-            lblGuid.AutoSize = true;
-            lblGuid.Location = new Point(137, 162);
-            lblGuid.Name = "lblGuid";
-            lblGuid.Size = new Size(47, 20);
-            lblGuid.TabIndex = 6;
-            lblGuid.Text = "Guid: ";
-            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(lblGuid);
             Controls.Add(lblRating);
             Controls.Add(lblNickname);
             Controls.Add(btnLeaderBoard);
@@ -130,6 +119,5 @@
         private Button btnLogout;
         private Label lblNickname;
         private Label lblRating;
-        private Label lblGuid;
     }
 }

@@ -1,4 +1,4 @@
-﻿using DatabaseLibrary.Core;
+using DatabaseLibrary.Core;
 using GameCore;
 
 namespace ServerCTask;

@@ -1,13 +1,22 @@
-﻿using ClientWFTask.Services;
+using ClientWFTask.Services;
 using GameCore;
+using System.Text;
+using System.Text.Json;
 
 namespace ClientWFTask;
 
 public partial class WatchForm : Form
 {
-    private List<RoomInfo> _rooms = new();
+    private List<RoomInfoData> _rooms = new();
 
-    public WatchForm() => InitializeComponent();
+    public WatchForm()
+    {
+        InitializeComponent();
+        BoardFormHelper.StyleForm(this);
+        BoardFormHelper.StyleList(lbGames);
+        BoardFormHelper.StyleFormButton(btnRefresh);
+        BoardFormHelper.StyleFormButton(btnWatch);
+    }
 
     private void WatchForm_Load(object sender, EventArgs e)
     {
@@ -15,52 +24,90 @@ public partial class WatchForm : Form
         RefreshList();
     }
 
-    private void OnPacket(INetworkPacket packet)
+    private void OnPacket(NetworkPacket packet)
     {
-        if (packet is RoomsListManagePacket list)
+        if (packet.CommandCode == PacketType.RoomsListForWatchersPacket && packet.PResult == PacketResult.Success)
         {
-            _rooms = list.Rooms;
-            if (InvokeRequired) { BeginInvoke(() => OnPacket(packet)); return; }
-            lbGames.Items.Clear();
-            if (_rooms.Count == 0)
-            {
-                lbGames.Items.Add("Нет активных игр");
-                return;
-            }
-            foreach (var r in _rooms)
-                lbGames.Items.Add($"#{r.Id}  {r.WhiteName}  vs  {r.BlackName}");
+            _rooms = JsonSerializer.Deserialize<List<RoomInfoData>>(packet.Data) ?? new();
+            if (InvokeRequired) { BeginInvoke(() => FillList()); return; }
+            FillList();
         }
-        else if (packet is MatchStartedPacket match)
+        else if (packet.CommandCode == PacketType.MatchStartedPacket)
         {
+            var match = BoardFormHelper.ParseMatchStarted(packet);
+            if (match == null || match.Role != ClientType.Watcher) return;
             if (InvokeRequired) { BeginInvoke(() => OpenRoom(match)); return; }
             OpenRoom(match);
         }
     }
 
-    private void OpenRoom(MatchStartedPacket match)
+    private void FillList()
+    {
+        lbGames.Items.Clear();
+        if (_rooms.Count == 0)
+        {
+            lbGames.Items.Add("No active games");
+            return;
+        }
+        foreach (var r in _rooms)
+            lbGames.Items.Add($"#{r.Id}  {r.WhiteName}  vs  {r.BlackName}");
+    }
+
+    private void OpenRoom(MatchStartedData match)
     {
         Session.RoomId = match.RoomId;
         Session.Role = ClientType.Watcher;
         Session.Color = null;
         Hide();
-        new RoomForm(match).ShowDialog();
+        new WatcherRoom(match).ShowDialog();
         Show();
         RefreshList();
     }
 
-    private void RefreshList() => GameConnection.Instance.Send(new RoomsListManagePacket());
+    private async void RefreshList()
+    {
+        try
+        {
+            GameConnection.Instance.EnsureConnected();
+            await GameConnection.Instance.SendAsync(new NetworkPacket
+            {
+                CommandCode = PacketType.RoomsListForWatchersPacket,
+                PacketTo = PacketWhere.ToServer,
+                PResult = PacketResult.Success,
+                Data = Array.Empty<byte>()
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message);
+        }
+    }
 
     private void btnRefresh_Click(object sender, EventArgs e) => RefreshList();
 
-    private void btnWatch_Click(object sender, EventArgs e)
+    private async void btnWatch_Click(object sender, EventArgs e)
     {
         if (lbGames.SelectedIndex < 0 || _rooms.Count == 0) return;
         var room = _rooms[lbGames.SelectedIndex];
-        GameConnection.Instance.Send(new ManageConnectionPacket
+        try
         {
-            RoomId = room.Id,
-            ConnectionType = ConnectionType.Connect
-        });
+            await GameConnection.Instance.SendAsync(new NetworkPacket
+            {
+                CommandCode = PacketType.ManageConnectionPacket,
+                PacketTo = PacketWhere.ToServer,
+                PResult = PacketResult.Success,
+                Data = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new ManageConnectionData
+                {
+                    RoomId = room.Id,
+                    UserId = 0,
+                    ConnectionType = ConnectionType.Connect
+                }))
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message);
+        }
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)

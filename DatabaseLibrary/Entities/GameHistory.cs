@@ -1,4 +1,4 @@
-﻿namespace DatabaseLibrary.Entities;
+namespace DatabaseLibrary.Entities;
 public class GameHistory
 {
     public int Id { get; set; }
@@ -7,7 +7,7 @@ public class GameHistory
 
     public int BlackId { get; set; }
 
-    public int WinnerId { get; set; }
+    public int? WinnerId { get; set; }
 
     public string Moves { get; set; } = "";
 

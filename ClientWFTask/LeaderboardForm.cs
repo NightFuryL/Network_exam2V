@@ -1,40 +1,53 @@
-﻿using ClientWFTask.Services;
+using ClientWFTask.Services;
 using DatabaseLibrary.Entities;
 using GameCore;
-using System.ComponentModel;
-using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 
 namespace ClientWFTask;
 
 public partial class LeaderboardForm : Form
 {
-    public LeaderboardForm() => InitializeComponent();
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public List<UserEntity> board { get; set; }
-    private void LeaderboardForm_Load(object sender, EventArgs e)
+    public LeaderboardForm()
     {
-        JsonSerializer.Ser
+        InitializeComponent();
+        BoardFormHelper.StyleForm(this);
+        BoardFormHelper.StyleList(lbLeaderboard);
+        BoardFormHelper.StyleFormButton(btnRefresh);
     }
-    
-    private void ManagePacket()
-    {
-        INetworkPacket packet;
 
-        if (packet is not LeaderBoardManagePacket board) return;
+    private async void LeaderboardForm_Load(object sender, EventArgs e) => await RefreshBoard();
+
+    private async Task RefreshBoard()
+    {
+        try
+        {
+            GameConnection.Instance.EnsureConnected();
+            var packet = new NetworkPacket
+            {
+                CommandCode = PacketType.LeaderBoardData,
+                PacketTo = PacketWhere.ToServer,
+                PResult = PacketResult.Success,
+                Data = Array.Empty<byte>()
+            };
+            var response = await GameConnection.Instance.SendAndWaitAsync(packet, PacketType.LeaderBoardData);
+            if (response.PResult != PacketResult.Success) return;
+            var board = JsonSerializer.Deserialize<List<UserEntity>>(response.Data) ?? new();
+            DoByPacket(board);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message);
+        }
     }
-    private void DoByPacket()
+
+    private void DoByPacket(List<UserEntity> board)
     {
         lbLeaderboard.Items.Clear();
         int place = 1;
         foreach (var u in board)
-            lbLeaderboard.Items.Add($"{place++}. {u.Name} | R:{u.Rating} | W:{u.Wins} D:{u.Draws} L:{u.Loses}");
+            lbLeaderboard.Items.Add($"{place++}. {u.Name} | {u.Rating}");
     }
-    private void btnRefresh_Click(object sender, EventArgs e) =>
 
-
-    protected override void OnFormClosed(FormClosedEventArgs e)
-    {
-        base.OnFormClosed(e);
-    }
+    private async void btnRefresh_Click(object sender, EventArgs e) => await RefreshBoard();
 }

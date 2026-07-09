@@ -1,16 +1,10 @@
-﻿using DatabaseLibrary.Entities;
-using System.Text.Json;
 namespace GameCore;
-
-using System;
-using System.IO;
-
 public class NetworkPacket
 {
     public PacketType CommandCode { get; set; }
     public PacketWhere PacketTo { get; set; }
     public PacketResult PResult { get; set; } 
-    public byte[] Data { get; set; }
+    public byte[] Data { get; set; } = Array.Empty<byte>();
 
     /// <summary>
     /// Метод упаковки: превращает весь пакет в один плоский массив байт для отправки в сеть
@@ -48,9 +42,9 @@ public class NetworkPacket
         var packet = new NetworkPacket();
 
         // 1. Читаем заголовки в том же порядке, в каком записывали
-        packet.CommandCode = (PacketType)reader.ReadInt32();
-        packet.PacketTo = (PacketWhere)reader.ReadInt32();
-        packet.PResult = (PacketResult)reader.ReadInt32();
+        packet.CommandCode = (PacketType)reader.ReadByte();
+        packet.PacketTo = (PacketWhere)reader.ReadByte();
+        packet.PResult = (PacketResult)reader.ReadByte();
 
         // 2. Читаем размер данных
         int dataLength = reader.ReadInt32();

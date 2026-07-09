@@ -1,4 +1,4 @@
-﻿namespace GameCore;
+namespace GameCore;
 
 public enum ClientType
 {

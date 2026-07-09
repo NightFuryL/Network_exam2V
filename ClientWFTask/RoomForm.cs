@@ -1,110 +1,133 @@
-﻿using ClientWFTask.Services;
+using ClientWFTask.Services;
 using GameCore;
+using System.Text;
+using System.Text.Json;
 
 namespace ClientWFTask;
 
 public partial class RoomForm : Form
 {
-    private readonly MatchStartedPacket _match;
-    private readonly bool _spectator;
+    private readonly MatchStartedData _match;
     private readonly Button[,] _cells = new Button[8, 8];
     private readonly Label _lblEatenWhite;
     private readonly Label _lblEatenBlack;
+    private readonly PlayerColor? _myColor;
     private int? _pickRow, _pickCol;
     private BoardState? _state;
 
-    public RoomForm(MatchStartedPacket match)
+    public RoomForm(MatchStartedData match)
     {
         _match = match;
-        _spectator = match.Role == ClientType.Watcher;
+        _myColor = match.YourColor;
         InitializeComponent();
+        BoardFormHelper.StyleForm(this);
 
-        lblPlayer_1.Text = "⚪ " + match.WhiteName;
-        lblPlayer_2.Text = "⚫ " + match.BlackName;
+        bool iAmBlack = _myColor == PlayerColor.Black;
+        string opponentName = iAmBlack ? match.WhiteName : match.BlackName;
+        string myName = iAmBlack ? match.BlackName : match.WhiteName;
+        string opponentSymbol = iAmBlack ? "\u25CB" : "\u25CF";
+        string mySymbol = iAmBlack ? "\u25CF" : "\u25CB";
+
+        lblPlayer_1.Text = $"{opponentSymbol} Opponent: {opponentName}";
+        lblPlayer_2.Text = $"{mySymbol} You: {myName}";
+        BoardFormHelper.StyleLabel(lblPlayer_1, true);
+        BoardFormHelper.StyleLabel(lblPlayer_2, true);
+        BoardFormHelper.StyleLabel(lblTurn);
+
+        BoardFormHelper.StyleFormButton(btnExit);
+        btnExit.Text = "Exit";
 
         _lblEatenWhite = new Label
         {
             AutoSize = true,
             Location = new Point(504, 50),
-            Text = "Съели (белые): 0"
+            Text = "Captured white: 0"
         };
         _lblEatenBlack = new Label
         {
             AutoSize = true,
             Location = new Point(504, 370),
-            Text = "Съели (чёрные): 0"
+            Text = "Captured black: 0"
         };
         Controls.Add(_lblEatenWhite);
         Controls.Add(_lblEatenBlack);
+        BoardFormHelper.StyleLabel(_lblEatenWhite);
+        BoardFormHelper.StyleLabel(_lblEatenBlack);
 
-        BuildBoard();
+        BoardFormHelper.BuildBoard(panel1, _cells, false, OnCellClick, iAmBlack);
         GameConnection.Instance.PacketReceived += OnPacket;
+        if (match.InitialBoard != null)
+            ApplyBoard(match.InitialBoard);
     }
 
-    private void BuildBoard()
+    private void OnPacket(NetworkPacket packet)
     {
-        panel1.Controls.Clear();
-        int size = 48;
-        for (int r = 0; r < 8; r++)
-        for (int c = 0; c < 8; c++)
+        if (packet.CommandCode == PacketType.BoardStatePacket)
         {
-            var btn = new Button
+            var board = BoardFormHelper.ParseBoardState(packet);
+            if (board == null) return;
+            if (InvokeRequired) { BeginInvoke(() => ApplyBoard(board)); return; }
+            ApplyBoard(board);
+        }
+        else if (packet.CommandCode == PacketType.MoveSyncPacket && packet.PResult == PacketResult.Failed)
+        {
+            var move = BoardFormHelper.ParseMoveSync(packet);
+            if (move == null || move.Success) return;
+            if (InvokeRequired)
             {
-                Size = new Size(size, size),
-                Location = new Point(c * size, r * size),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Emoji", 14F),
-                Tag = (r, c),
-                BackColor = BoardHelper.IsDark(r, c) ? Color.SaddleBrown : Color.Wheat,
-                Enabled = BoardHelper.IsDark(r, c) && !_spectator
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.Click += OnCellClick;
-            _cells[r, c] = btn;
-            panel1.Controls.Add(btn);
+                BeginInvoke(async () => await ShowInvalidMove(move));
+                return;
+            }
+            _ = ShowInvalidMove(move);
+        }
+        else if (packet.CommandCode == PacketType.GameEndPacket)
+        {
+            var end = BoardFormHelper.ParseGameEnd(packet);
+            if (end == null) return;
+            if (InvokeRequired) { BeginInvoke(() => HandleGameEnd(end)); return; }
+            HandleGameEnd(end);
         }
     }
 
-    private void OnPacket(INetworkPacket packet)
+    private void ApplyBoard(BoardState board)
     {
-        if (packet is BoardStatePacket board && _match.RoomId > 0)
-        {
-            if (InvokeRequired) { BeginInvoke(() => Draw(board.State)); return; }
-            Draw(board.State);
-        }
-        else if (packet is MoveSyncPacket move && !move.Success)
-        {
-            if (InvokeRequired) { BeginInvoke(() => MessageBox.Show(move.Error)); return; }
-            MessageBox.Show(move.Error);
-        }
-        else if (packet is GameStatePacket end)
-        {
-            if (InvokeRequired) { BeginInvoke(() => { MessageBox.Show("Конец: " + end.Result); Close(); }); return; }
-            MessageBox.Show("Конец: " + end.Result);
-            Close();
-        }
-    }
-
-    private void Draw(BoardState state)
-    {
-        _state = state;
+        _state = board;
         _pickRow = _pickCol = null;
-        int[,] board = state.GetBoard();
-
-        for (int r = 0; r < 8; r++)
-        for (int c = 0; c < 8; c++)
-            _cells[r, c].Text = FigureCell.ToEmoji((CellType)board[r, c]);
-
-        _lblEatenWhite.Text = $"Съели (белые): {state.WhiteCaptured}";
-        _lblEatenBlack.Text = $"Съели (чёрные): {state.BlackCaptured}";
-        lblTurn.Text = state.Result != GameState.InProgress
-            ? "Итог: " + state.Result
-            : $"Ход: {state.Turn}";
+        BoardFormHelper.Draw(board, _cells, lblTurn, _lblEatenWhite, _lblEatenBlack, _myColor);
     }
 
-    private void OnCellClick(object? sender, EventArgs e)
+    private async Task ShowInvalidMove(MoveSyncData move)
     {
-        if (_spectator || sender is not Button btn || btn.Tag is not ValueTuple<int, int> pos)
+        await BoardFormHelper.FlashInvalid(_cells, move.Move.FromRow, move.Move.FromColumn);
+        if (_state != null)
+            BoardFormHelper.Draw(_state, _cells, lblTurn, _lblEatenWhite, _lblEatenBlack, _myColor);
+    }
+
+    private void HandleGameEnd(GameEndData end)
+    {
+        if (end.WhiteUser?.Id == Session.Id)
+            Session.UpdateRating(end.WhiteUser.Rating);
+        else if (end.BlackUser?.Id == Session.Id)
+            Session.UpdateRating(end.BlackUser.Rating);
+
+        bool won = end.Result switch
+        {
+            GameState.WhiteWin => Session.Color == PlayerColor.White,
+            GameState.BlackWin => Session.Color == PlayerColor.Black,
+            _ => false
+        };
+
+        string msg = end.ByForfeit
+            ? (won ? "Opponent left. You win!" : "You left the room.")
+            : won ? "You win!" : "Game finished: " + end.Result;
+
+        MessageBox.Show(msg);
+        Close();
+    }
+
+    private async void OnCellClick(object? sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not ValueTuple<int, int> pos)
             return;
         if (_state == null || _state.Result != GameState.InProgress) return;
 
@@ -112,50 +135,82 @@ public partial class RoomForm : Form
         int[,] board = _state.GetBoard();
         var figure = FigureCell.At(board, row, col);
 
+        if (_pickRow == null && _state.ContinueCaptureRow.HasValue)
+        {
+            if (row != _state.ContinueCaptureRow || col != _state.ContinueCaptureCol)
+                return;
+        }
+
         if (_pickRow == null)
         {
             if (figure == null || figure.Color != Session.Color) return;
+            if (_state.ContinueCaptureRow.HasValue &&
+                (row != _state.ContinueCaptureRow || col != _state.ContinueCaptureCol))
+                return;
             _pickRow = row;
             _pickCol = col;
-            btn.Text = FigureCell.ToEmoji(figure.Type) + "^";
-            lblTurn.Text = "Взял ^";
+            btn.Text = FigureCell.ToSymbol(figure.Type);
+            btn.ForeColor = BoardFormHelper.PieceColor(figure.Type);
+            btn.BackColor = Color.Gold;
+            btn.FlatAppearance.MouseOverBackColor = Color.Orange;
+            lblTurn.Text = "Piece selected";
             return;
         }
 
         if (row == _pickRow && col == _pickCol)
         {
-            Draw(_state);
+            ApplyBoard(_state);
             return;
         }
 
         if (figure != null) return;
 
-        GameConnection.Instance.Send(new MoveSyncPacket
+        try
         {
-            RoomId = _match.RoomId,
-            Move = new MoveInfo
+            await GameConnection.Instance.SendAsync(new NetworkPacket
             {
-                FromRow = _pickRow.Value,
-                FromColumn = _pickCol.Value,
-                ToRow = row,
-                ToColumn = col
-            }
-        });
-    }
-
-    private void RoomForm_Load(object sender, EventArgs e)
-    {
-        if (_spectator)
-            lblTurn.Text = "Наблюдатель";
-    }
-
-    private void btnExit_Click(object sender, EventArgs e)
-    {
-        GameConnection.Instance.Send(new ManageConnectionPacket
+                CommandCode = PacketType.MoveSyncPacket,
+                PacketTo = PacketWhere.ToServer,
+                PResult = PacketResult.Success,
+                Data = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new MoveSyncData
+                {
+                    RoomId = _match.RoomId,
+                    UserId = Session.Id,
+                    Move = new MoveInfo
+                    {
+                        FromRow = _pickRow!.Value,
+                        FromColumn = _pickCol!.Value,
+                        ToRow = row,
+                        ToColumn = col
+                    }
+                }))
+            });
+            _pickRow = _pickCol = null;
+        }
+        catch (Exception ex)
         {
-            RoomId = _match.RoomId,
-            ConnectionType = ConnectionType.Exit
-        });
+            MessageBox.Show(ex.Message);
+        }
+    }
+
+    private async void btnExit_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            await GameConnection.Instance.SendAsync(new NetworkPacket
+            {
+                CommandCode = PacketType.ManageConnectionPacket,
+                PacketTo = PacketWhere.ToServer,
+                PResult = PacketResult.Success,
+                Data = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new ManageConnectionData
+                {
+                    RoomId = _match.RoomId,
+                    UserId = Session.Id,
+                    ConnectionType = ConnectionType.Exit
+                }))
+            });
+        }
+        catch { }
         Close();
     }
 

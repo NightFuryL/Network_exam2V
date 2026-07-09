@@ -1,4 +1,4 @@
-﻿using DatabaseLibrary.Core;
+using DatabaseLibrary.Core;
 using DatabaseLibrary.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,15 +15,8 @@ public class DataManager : IDataManager
     public UserEntity? GetUser(string name)
     {
         using CheckersDbContext db = new();
-        return db.Users.FirstOrDefault(x => x.Name == name);
-    }
-
-    public UserEntity? Login(int id, string name, string password)
-    {
-        var user = GetUser(id);
-        if (user != null && user.Password == password)
-            return user;
-        return null;
+        string key = name.Trim().ToLowerInvariant();
+        return db.Users.AsEnumerable().FirstOrDefault(x => x.Name.ToLowerInvariant() == key);
     }
 
     public List<UserEntity> GetTopPlayers(int count)

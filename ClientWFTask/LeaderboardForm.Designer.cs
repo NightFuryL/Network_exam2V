@@ -1,4 +1,4 @@
-﻿namespace ClientWFTask
+namespace ClientWFTask
 {
     partial class LeaderboardForm
     {

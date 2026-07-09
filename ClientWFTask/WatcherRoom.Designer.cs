@@ -1,16 +1,9 @@
 namespace ClientWFTask
 {
-    partial class RoomForm
+    partial class WatcherRoom
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +15,6 @@ namespace ClientWFTask
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             btnExit = new Button();
@@ -79,7 +68,7 @@ namespace ClientWFTask
             panel1.Size = new Size(400, 400);
             panel1.TabIndex = 4;
             // 
-            // RoomForm
+            // WatcherRoom
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -89,8 +78,8 @@ namespace ClientWFTask
             Controls.Add(lblPlayer_2);
             Controls.Add(lblPlayer_1);
             Controls.Add(btnExit);
-            Name = "RoomForm";
-            Text = "RoomForm";
+            Name = "WatcherRoom";
+            Text = "WatcherRoom";
             ResumeLayout(false);
             PerformLayout();
         }

@@ -23,4 +23,8 @@
     <ProjectReference Include="..\DatabaseLibrary\DatabaseLibrary.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="CheckersBoard\" />
+  </ItemGroup>
+
 </Project>

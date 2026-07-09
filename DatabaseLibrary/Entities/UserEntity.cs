@@ -1,4 +1,4 @@
-﻿namespace DatabaseLibrary.Entities
+namespace DatabaseLibrary.Entities
 {
     public class UserEntity
     {

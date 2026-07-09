@@ -1,4 +1,4 @@
-﻿using DatabaseLibrary.Entities;
+using DatabaseLibrary.Entities;
 
 namespace DatabaseLibrary.Core;
 
